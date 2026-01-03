@@ -1,41 +1,49 @@
-use std::{fs::File, io::Read};
+use tokio::io::AsyncReadExt;
+use tokio::{fs::File, sync::mpsc};
 
-fn get_lines(mut file: File) -> Vec<String> {
+async fn stream_lines(mut file: File, tx: mpsc::Sender<String>) {
     let mut buffer = [0u8; 8];
-    let mut lines = Vec::new();
+    let mut pending = String::new();
 
-    let mut line = String::new();
     loop {
         let bytes_read = file
             .read(&mut buffer)
+            .await
             .expect("Failed to read the file contents!");
 
         if bytes_read == 0 {
             break;
         }
 
-        line += str::from_utf8(&buffer[..bytes_read]).expect("Failed to convert to String");
-        let split_lines: Vec<&str> = line.split('\n').collect();
+        pending
+            .push_str(str::from_utf8(&buffer[..bytes_read]).expect("Failed to convert to String"));
 
-        if split_lines.len() > 1 {
-            lines.push(split_lines[0].to_string());
-            line = String::from(split_lines[1].to_string());
-        } else {
-            line = String::from(split_lines[0]);
+        while let Some(idx) = pending.find('\n') {
+            let line = pending[..idx].to_string();
+            if tx.send(line).await.is_err() {
+                return;
+            }
+            pending = pending[idx + 1..].to_string();
         }
     }
-    if line.len() != 0 {
-        lines.push(line.to_string());
-    }
 
-    lines
+    if !pending.is_empty() {
+        let _ = tx.send(pending).await;
+    }
 }
 
-fn main() {
-    let file = File::open("messages.txt").expect("Failed to read the file!");
+#[tokio::main]
+async fn main() {
+    let file = File::open("messages.txt")
+        .await
+        .expect("Failed to read the file!");
 
-    let lines = get_lines(file);
-    for line in lines {
-        println!("read: {}", line);
+    let (tx, mut rx) = mpsc::channel::<String>(100);
+    tokio::spawn(async move {
+        stream_lines(file, tx).await;
+    });
+
+    while let Some(line) = rx.recv().await {
+        println!("read: {line}");
     }
 }
