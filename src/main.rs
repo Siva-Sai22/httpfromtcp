@@ -1,12 +1,13 @@
 use tokio::io::AsyncReadExt;
-use tokio::{fs::File, sync::mpsc};
+use tokio::net::{TcpListener, TcpStream};
+use tokio::sync::mpsc;
 
-async fn stream_lines(mut file: File, tx: mpsc::Sender<String>) {
+async fn stream_lines(mut stream: TcpStream, tx: mpsc::Sender<String>) {
     let mut buffer = [0u8; 8];
     let mut pending = String::new();
 
     loop {
-        let bytes_read = file
+        let bytes_read = stream
             .read(&mut buffer)
             .await
             .expect("Failed to read the file contents!");
@@ -34,16 +35,33 @@ async fn stream_lines(mut file: File, tx: mpsc::Sender<String>) {
 
 #[tokio::main]
 async fn main() {
-    let file = File::open("messages.txt")
+    let listener = TcpListener::bind("127.0.0.1:42069")
         .await
-        .expect("Failed to read the file!");
+        .expect("Failed to bind to address");
+    println!("Server listening on port 42069");
 
-    let (tx, mut rx) = mpsc::channel::<String>(100);
-    tokio::spawn(async move {
-        stream_lines(file, tx).await;
-    });
+    loop {
+        match listener.accept().await {
+            Ok((stream, addr)) => {
+                println!("New connection from: {}", addr);
 
-    while let Some(line) = rx.recv().await {
-        println!("read: {line}");
+                let (tx, mut rx) = mpsc::channel::<String>(100);
+
+                tokio::spawn(async move {
+                    stream_lines(stream, tx).await;
+                });
+
+                tokio::spawn(async move {
+                    while let Some(line) = rx.recv().await {
+                        println!("{line}");
+                    }
+                    println!("Connection {} closed", addr);
+                });
+            }
+            Err(e) => {
+                eprintln!("Failed to accept connection: {}", e);
+                continue;
+            }
+        }
     }
 }
