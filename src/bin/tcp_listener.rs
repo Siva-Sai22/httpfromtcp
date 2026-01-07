@@ -1,8 +1,12 @@
-use tokio::io::AsyncReadExt;
-use tokio::net::{TcpListener, TcpStream};
+use tokio::io::{AsyncRead, AsyncReadExt};
+use tokio::net::TcpListener;
 use tokio::sync::mpsc;
 
-async fn stream_lines(mut stream: TcpStream, tx: mpsc::Sender<String>) {
+// Modify this to accept an interface of the writer rather than the tcp stream
+async fn stream_lines<R>(mut stream: R, tx: mpsc::Sender<String>)
+where
+    R: AsyncRead + Unpin,
+{
     let mut buffer = [0u8; 8];
     let mut pending = String::new();
 
