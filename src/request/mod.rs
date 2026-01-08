@@ -3,7 +3,7 @@ use std::io::Error;
 use tokio::io::{AsyncRead, AsyncReadExt};
 
 #[derive(Debug, PartialEq)]
-enum RequestMethod {
+pub enum RequestMethod {
     GET,
     POST,
     PUT,
@@ -22,10 +22,10 @@ impl RequestMethod {
     }
 }
 
-struct RequestLine {
-    http_version: String,
-    request_target: String,
-    method: RequestMethod,
+pub struct RequestLine {
+    pub http_version: String,
+    pub request_target: String,
+    pub method: RequestMethod,
 }
 
 #[derive(PartialEq)]
@@ -34,8 +34,8 @@ enum ParserState {
     DONE,
 }
 
-struct Request {
-    request_line: RequestLine,
+pub struct Request {
+    pub request_line: RequestLine,
     state: ParserState,
 }
 
@@ -52,9 +52,12 @@ fn new_request() -> Request {
 
 // e.g. : GET /coffee HTTP/1.1
 fn parse_request_line(request: &[u8]) -> Result<(Option<RequestLine>, usize), Error> {
-    let error_malformed_request_line = Error::new(std::io::ErrorKind::InvalidData, "Malformed Request Line");
-    let error_unsupported_http_version = Error::new(std::io::ErrorKind::InvalidData, "Unsupported HTTP Version");
-    let error_invalid_request_method = Error::new(std::io::ErrorKind::InvalidData, "Invalid Request Method");
+    let error_malformed_request_line =
+        Error::new(std::io::ErrorKind::InvalidData, "Malformed Request Line");
+    let error_unsupported_http_version =
+        Error::new(std::io::ErrorKind::InvalidData, "Unsupported HTTP Version");
+    let error_invalid_request_method =
+        Error::new(std::io::ErrorKind::InvalidData, "Invalid Request Method");
 
     let request_string = match std::str::from_utf8(request) {
         Ok(s) => s,
@@ -101,7 +104,8 @@ impl Request {
                     if bytes_parsed == 0 {
                         return Ok(0);
                     }
-
+                    
+                    // Only returns none when bytes_parsed == 0. Covered above
                     self.request_line = request_line.unwrap();
                     self.state = ParserState::DONE;
 
@@ -116,7 +120,7 @@ impl Request {
     }
 }
 
-async fn request_from_reader<R>(mut stream: R) -> Result<Request, Error>
+pub async fn request_from_reader<R>(mut stream: R) -> Result<Request, Error>
 where
     R: AsyncRead + Unpin,
 {
@@ -128,6 +132,7 @@ where
         let bytes_read;
         match stream.read(&mut buffer[buf_len..]).await {
             Ok(n) => bytes_read = n,
+            // TODO: Should resolve the errors
             Err(e) => return Err(e),
         };
         buf_len += bytes_read;
