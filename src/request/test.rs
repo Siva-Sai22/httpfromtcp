@@ -41,7 +41,7 @@ async fn test_good_get_request_line() {
         .await
         .expect("Failed to parse request");
 
-    assert_eq!(RequestMethod::GET, result.request_line.method);
+    assert_eq!(RequestMethod::Get, result.request_line.method);
     assert_eq!("/", result.request_line.request_target);
     assert_eq!("1.1", result.request_line.http_version);
 }
@@ -59,7 +59,7 @@ async fn test_good_get_request_line_with_path() {
         .await
         .expect("Failed to parse request");
 
-    assert_eq!(RequestMethod::GET, result.request_line.method);
+    assert_eq!(RequestMethod::Get, result.request_line.method);
     assert_eq!("/coffee", result.request_line.request_target);
     assert_eq!("1.1", result.request_line.http_version);
 }
@@ -91,7 +91,7 @@ async fn test_post_request_line() {
         .await
         .expect("Failed to parse request");
 
-    assert_eq!(RequestMethod::POST, result.request_line.method);
+    assert_eq!(RequestMethod::Post, result.request_line.method);
     assert_eq!("/submit", result.request_line.request_target);
     assert_eq!("1.1", result.request_line.http_version);
 }

@@ -9,7 +9,7 @@ fn valid_single_header() {
     let (done, n) = result.unwrap();
 
     assert!(!headers.0.is_empty());
-    assert_eq!(headers.0.get("Host"), Some(&"localhost:42069".to_string()));
+    assert_eq!(headers.0.get("host"), Some(&"localhost:42069".to_string()));
     assert_eq!(n, 23);
     assert!(done);
 }
@@ -33,7 +33,7 @@ fn valid_single_header_with_spaces() {
     let (done, n) = result.unwrap();
 
     assert!(!headers.0.is_empty());
-    assert_eq!(headers.0.get("Host"), Some(&"localhost:42069".to_string()));
+    assert_eq!(headers.0.get("host"), Some(&"localhost:42069".to_string()));
     assert_eq!(n, 35);
     assert!(done);
 }
@@ -47,8 +47,8 @@ fn valid_two_headers() {
     let (done, n) = result.unwrap();
 
     assert!(!headers.0.is_empty());
-    assert_eq!(headers.0.get("Host"), Some(&"localhost:42069".to_string()));
-    assert_eq!(headers.0.get("User-Agent"), Some(&"TestAgent".to_string()));
+    assert_eq!(headers.0.get("host"), Some(&"localhost:42069".to_string()));
+    assert_eq!(headers.0.get("user-agent"), Some(&"TestAgent".to_string()));
     assert_eq!(n, 46);
     assert!(done);
 }
@@ -58,16 +58,31 @@ fn valid_two_header_with_existing_headers() {
     let mut headers = Headers::new();
     headers
         .0
-        .insert("Existing".to_string(), "Header".to_string());
+        .insert("existing".to_string(), "Header".to_string());
     let data = b"Host: localhost:42069\r\nUser-Agent: TestAgent\r\n\r\n";
 
     let result = headers.parse(data);
     let (done, n) = result.unwrap();
 
     assert!(!headers.0.is_empty());
-    assert_eq!(headers.0.get("Existing"), Some(&"Header".to_string()));
-    assert_eq!(headers.0.get("Host"), Some(&"localhost:42069".to_string()));
-    assert_eq!(headers.0.get("User-Agent"), Some(&"TestAgent".to_string()));
+    assert_eq!(headers.0.get("existing"), Some(&"Header".to_string()));
+    assert_eq!(headers.0.get("host"), Some(&"localhost:42069".to_string()));
+    assert_eq!(headers.0.get("user-agent"), Some(&"TestAgent".to_string()));
+    assert_eq!(n, 46);
+    assert!(done);
+}
+
+#[test]
+fn capital_header_names() {
+    let mut headers = Headers::new();
+    let data = b"hOsT: localhost:42069\r\nuSeR-aGeNt: TestAgent\r\n\r\n";
+
+    let result = headers.parse(data);
+    let (done, n) = result.unwrap();
+
+    assert!(!headers.0.is_empty());
+    assert_eq!(headers.0.get("host"), Some(&"localhost:42069".to_string()));
+    assert_eq!(headers.0.get("user-agent"), Some(&"TestAgent".to_string()));
     assert_eq!(n, 46);
     assert!(done);
 }

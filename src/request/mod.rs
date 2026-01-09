@@ -4,19 +4,19 @@ use tokio::io::{AsyncRead, AsyncReadExt};
 
 #[derive(Debug, PartialEq)]
 pub enum RequestMethod {
-    GET,
-    POST,
-    PUT,
-    DELETE,
+    Get,
+    Post,
+    Put,
+    Delete,
 }
 
 impl RequestMethod {
     fn from_str(method: &str) -> Option<RequestMethod> {
         match method {
-            "GET" => Some(RequestMethod::GET),
-            "POST" => Some(RequestMethod::POST),
-            "PUT" => Some(RequestMethod::PUT),
-            "DELETE" => Some(RequestMethod::DELETE),
+            "GET" => Some(RequestMethod::Get),
+            "POST" => Some(RequestMethod::Post),
+            "PUT" => Some(RequestMethod::Put),
+            "DELETE" => Some(RequestMethod::Delete),
             _ => None,
         }
     }
@@ -30,8 +30,8 @@ pub struct RequestLine {
 
 #[derive(PartialEq)]
 enum ParserState {
-    INIT,
-    DONE,
+    Init,
+    Done,
 }
 
 pub struct Request {
@@ -44,9 +44,9 @@ fn new_request() -> Request {
         request_line: RequestLine {
             http_version: String::new(),
             request_target: String::new(),
-            method: RequestMethod::GET,
+            method: RequestMethod::Get,
         },
-        state: ParserState::INIT,
+        state: ParserState::Init,
     }
 }
 
@@ -86,36 +86,34 @@ fn parse_request_line(request: &[u8]) -> Result<(Option<RequestLine>, usize), Er
         return Err(error_unsupported_http_version);
     }
 
-    return Ok((
+    Ok((
         Some(RequestLine {
             http_version: http_parts[1].to_string(),
             request_target: parts[1].to_string(),
             method,
         }),
         read,
-    ));
+    ))
 }
 
 impl Request {
     fn parse(&mut self, buffer: &[u8]) -> Result<usize, Error> {
         match self.state {
-            ParserState::INIT => match parse_request_line(&buffer) {
+            ParserState::Init => match parse_request_line(buffer) {
                 Ok((request_line, bytes_parsed)) => {
                     if bytes_parsed == 0 {
                         return Ok(0);
                     }
-                    
+
                     // Only returns none when bytes_parsed == 0. Covered above
                     self.request_line = request_line.unwrap();
-                    self.state = ParserState::DONE;
+                    self.state = ParserState::Done;
 
-                    return Ok(bytes_parsed);
+                    Ok(bytes_parsed)
                 }
-                Err(e) => return Err(e),
+                Err(e) => Err(e),
             },
-            ParserState::DONE => {
-                return Ok(0);
-            }
+            ParserState::Done => Ok(0),
         }
     }
 }
@@ -128,26 +126,24 @@ where
     let mut request = new_request();
     let mut buf_len = 0;
 
-    while request.state != ParserState::DONE {
-        let bytes_read;
-        match stream.read(&mut buffer[buf_len..]).await {
-            Ok(n) => bytes_read = n,
+    while request.state != ParserState::Done {
+        let bytes_read = match stream.read(&mut buffer[buf_len..]).await {
+            Ok(n) => n,
             // TODO: Should resolve the errors
             Err(e) => return Err(e),
         };
         buf_len += bytes_read;
 
-        let read_bytes;
-        match request.parse(&buffer[..buf_len]) {
-            Ok(n) => read_bytes = n,
+        let read_bytes = match request.parse(&buffer[..buf_len]) {
+            Ok(n) => n,
             Err(e) => return Err(e),
-        }
+        };
 
         buffer.copy_within(read_bytes..buf_len, 0);
         buf_len -= read_bytes;
     }
 
-    return Ok(request);
+    Ok(request)
 }
 
 #[cfg(test)]
