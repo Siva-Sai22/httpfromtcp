@@ -32,8 +32,8 @@ pub struct RequestLine {
 
 #[derive(PartialEq)]
 enum ParserState {
-    RequestStateParsingRequestLine,
-    RequestStateParsingHeaders,
+    StateRequestLine,
+    StateHeaders,
     Done,
 }
 
@@ -51,7 +51,7 @@ fn new_request() -> Request {
             method: RequestMethod::Get,
         },
         headers: Headers::new(),
-        state: ParserState::RequestStateParsingRequestLine,
+        state: ParserState::StateRequestLine,
     }
 }
 
@@ -104,7 +104,7 @@ fn parse_request_line(request: &[u8]) -> Result<(Option<RequestLine>, usize), Er
 impl Request {
     fn parse(&mut self, buffer: &[u8]) -> Result<usize, Error> {
         match self.state {
-            ParserState::RequestStateParsingRequestLine => match parse_request_line(buffer) {
+            ParserState::StateRequestLine => match parse_request_line(buffer) {
                 Ok((request_line, bytes_parsed)) => {
                     if bytes_parsed == 0 {
                         return Ok(0);
@@ -112,13 +112,13 @@ impl Request {
 
                     // Only returns none when bytes_parsed == 0. Covered above
                     self.request_line = request_line.unwrap();
-                    self.state = ParserState::RequestStateParsingHeaders;
+                    self.state = ParserState::StateHeaders;
 
                     Ok(bytes_parsed)
                 }
                 Err(e) => Err(e),
             },
-            ParserState::RequestStateParsingHeaders => match self.headers.parse(buffer) {
+            ParserState::StateHeaders => match self.headers.parse(buffer) {
                 Ok((done, bytes_parsed)) => {
                     if done {
                         self.state = ParserState::Done;

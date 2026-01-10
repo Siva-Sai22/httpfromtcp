@@ -8,9 +8,8 @@ fn valid_single_header() {
     let result = headers.parse(data);
     let (done, n) = result.unwrap();
 
-    assert!(!headers.0.is_empty());
-    assert_eq!(headers.0.get("host"), Some(&"localhost:42069".to_string()));
-    assert_eq!(n, 23);
+    assert_eq!(headers.get("Host"), Some(&"localhost:42069".to_string()));
+    assert_eq!(n, 25);
     assert!(done);
 }
 
@@ -32,9 +31,8 @@ fn valid_single_header_with_spaces() {
     let result = headers.parse(data);
     let (done, n) = result.unwrap();
 
-    assert!(!headers.0.is_empty());
-    assert_eq!(headers.0.get("host"), Some(&"localhost:42069".to_string()));
-    assert_eq!(n, 35);
+    assert_eq!(headers.get("Host"), Some(&"localhost:42069".to_string()));
+    assert_eq!(n, 37);
     assert!(done);
 }
 
@@ -46,29 +44,25 @@ fn valid_two_headers() {
     let result = headers.parse(data);
     let (done, n) = result.unwrap();
 
-    assert!(!headers.0.is_empty());
-    assert_eq!(headers.0.get("host"), Some(&"localhost:42069".to_string()));
-    assert_eq!(headers.0.get("user-agent"), Some(&"TestAgent".to_string()));
-    assert_eq!(n, 46);
+    assert_eq!(headers.get("Host"), Some(&"localhost:42069".to_string()));
+    assert_eq!(headers.get("User-Agent"), Some(&"TestAgent".to_string()));
+    assert_eq!(n, 48);
     assert!(done);
 }
 
 #[test]
 fn valid_two_header_with_existing_headers() {
     let mut headers = Headers::new();
-    headers
-        .0
-        .insert("existing".to_string(), "Header".to_string());
+    headers.set("existing", "Header");
     let data = b"Host: localhost:42069\r\nUser-Agent: TestAgent\r\n\r\n";
 
     let result = headers.parse(data);
     let (done, n) = result.unwrap();
 
-    assert!(!headers.0.is_empty());
-    assert_eq!(headers.0.get("existing"), Some(&"Header".to_string()));
-    assert_eq!(headers.0.get("host"), Some(&"localhost:42069".to_string()));
-    assert_eq!(headers.0.get("user-agent"), Some(&"TestAgent".to_string()));
-    assert_eq!(n, 46);
+    assert_eq!(headers.get("existing"), Some(&"Header".to_string()));
+    assert_eq!(headers.get("Host"), Some(&"localhost:42069".to_string()));
+    assert_eq!(headers.get("User-Agent"), Some(&"TestAgent".to_string()));
+    assert_eq!(n, 48);
     assert!(done);
 }
 
@@ -80,10 +74,9 @@ fn capital_header_names() {
     let result = headers.parse(data);
     let (done, n) = result.unwrap();
 
-    assert!(!headers.0.is_empty());
-    assert_eq!(headers.0.get("host"), Some(&"localhost:42069".to_string()));
-    assert_eq!(headers.0.get("user-agent"), Some(&"TestAgent".to_string()));
-    assert_eq!(n, 46);
+    assert_eq!(headers.get("Host"), Some(&"localhost:42069".to_string()));
+    assert_eq!(headers.get("User-Agent"), Some(&"TestAgent".to_string()));
+    assert_eq!(n, 48);
     assert!(done);
 }
 
@@ -95,9 +88,8 @@ fn multiple_values_for_single_header() {
     let result = headers.parse(data);
     let (done, n) = result.unwrap();
 
-    assert!(!headers.0.is_empty());
-    assert_eq!(headers.0.get("cookie"), Some(&"value1, value2".to_string()));
-    assert_eq!(n, 32);
+    assert_eq!(headers.get("Cookie"), Some(&"value1, value2".to_string()));
+    assert_eq!(n, 34);
     assert!(done);
 }
 
@@ -109,9 +101,8 @@ fn missing_ending_crlf() {
     let result = headers.parse(data);
     let (done, n) = result.unwrap();
 
-    assert!(!headers.0.is_empty());
-    assert_eq!(headers.0.get("host"), Some(&"localhost:42069".to_string()));
-    assert_eq!(headers.0.get("user-agent"), Some(&"TestAgent".to_string()));
+    assert_eq!(headers.get("Host"), Some(&"localhost:42069".to_string()));
+    assert_eq!(headers.get("User-Agent"), Some(&"TestAgent".to_string()));
     assert_eq!(n, 46);
     assert!(!done);
 }

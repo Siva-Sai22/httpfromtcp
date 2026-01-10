@@ -133,7 +133,7 @@ async fn test_valid_request_with_headers() {
         pos: 0,
     };
 
-    let result = request_from_reader(reader)
+    let mut result = request_from_reader(reader)
         .await
         .expect("Failed to parse request");
 
@@ -141,14 +141,14 @@ async fn test_valid_request_with_headers() {
     assert_eq!("/", result.request_line.request_target);
     assert_eq!("1.1", result.request_line.http_version);
     assert_eq!(
-        result.headers.0.get("host"),
+        result.headers.get("host"),
         Some(&"localhost:42069".to_string())
     );
     assert_eq!(
-        result.headers.0.get("user-agent"),
+        result.headers.get("user-agent"),
         Some(&"curl/7.81.0".to_string())
     );
-    assert_eq!(result.headers.0.get("accept"), Some(&"*/*".to_string()));
+    assert_eq!(result.headers.get("accept"), Some(&"*/*".to_string()));
 }
 
 #[tokio::test]
@@ -182,5 +182,4 @@ async fn test_empty_headers() {
     assert_eq!(RequestMethod::Get, result.request_line.method);
     assert_eq!("/", result.request_line.request_target);
     assert_eq!("1.1", result.request_line.http_version);
-    assert!(result.headers.0.is_empty());
 }

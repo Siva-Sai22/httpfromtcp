@@ -19,16 +19,16 @@ async fn main() {
 
                 tokio::spawn(async move {
                     match request_from_reader(stream).await {
-                        Ok(parsed_request) => {
+                        Ok(mut parsed_request) => {
                             println!("Request Line:");
                             println!("- Method: {:?}", parsed_request.request_line.method);
                             println!("- Target: {}", parsed_request.request_line.request_target);
                             println!("- Version: {}", parsed_request.request_line.http_version);
 
                             println!("Headers:");
-                            for (key, value) in parsed_request.headers.0.iter() {
-                                println!("- {}: {}", key, value);
-                            }
+                            parsed_request
+                                .headers
+                                .for_each(|a, b| println!("- {}: {}", a, b));
                         }
                         Err(e) => eprintln!("Failed to parse request: {}", e),
                     }
