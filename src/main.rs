@@ -29,6 +29,9 @@ async fn main() {
                             parsed_request
                                 .headers
                                 .for_each(|a, b| println!("- {}: {}", a, b));
+
+                            println!("Body:");
+                            println!("{}", String::from_utf8(parsed_request.body).unwrap());
                         }
                         Err(e) => eprintln!("Failed to parse request: {}", e),
                     }
