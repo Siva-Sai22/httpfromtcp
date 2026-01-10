@@ -1,9 +1,9 @@
 use std::{collections::HashMap, io::Error};
 
-struct Headers(HashMap<String, String>);
+pub struct Headers(pub HashMap<String, String>);
 
 impl Headers {
-    fn parse(&mut self, buffer: &[u8]) -> Result<(bool, usize), Error> {
+    pub fn parse(&mut self, buffer: &[u8]) -> Result<(bool, usize), Error> {
         let error_malformed_header =
             Error::new(std::io::ErrorKind::InvalidData, "Malformed Header");
 
@@ -46,14 +46,19 @@ impl Headers {
                 return Err(error_malformed_header);
             }
 
-            self.0
-                .insert(field_name.to_lowercase(), field_value.to_string());
+            if let Some(existing_value) = self.0.get(field_name.to_lowercase().as_str()) {
+                let new_value = format!("{}, {}", existing_value, field_value);
+                self.0.insert(field_name.to_lowercase(), new_value);
+            } else {
+                self.0
+                    .insert(field_name.to_lowercase(), field_value.to_string());
+            }
 
             rest = &rest[index + 2..];
         }
     }
 
-    fn new() -> Headers {
+    pub fn new() -> Headers {
         Headers(HashMap::new())
     }
 }

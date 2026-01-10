@@ -1,5 +1,7 @@
 use std::io::Error;
 
+use crate::headers::Headers;
+
 use tokio::io::{AsyncRead, AsyncReadExt};
 
 #[derive(Debug, PartialEq)]
@@ -30,12 +32,14 @@ pub struct RequestLine {
 
 #[derive(PartialEq)]
 enum ParserState {
-    Init,
+    RequestStateParsingRequestLine,
+    RequestStateParsingHeaders,
     Done,
 }
 
 pub struct Request {
     pub request_line: RequestLine,
+    pub headers: Headers,
     state: ParserState,
 }
 
@@ -46,7 +50,8 @@ fn new_request() -> Request {
             request_target: String::new(),
             method: RequestMethod::Get,
         },
-        state: ParserState::Init,
+        headers: Headers::new(),
+        state: ParserState::RequestStateParsingRequestLine,
     }
 }
 
@@ -99,7 +104,7 @@ fn parse_request_line(request: &[u8]) -> Result<(Option<RequestLine>, usize), Er
 impl Request {
     fn parse(&mut self, buffer: &[u8]) -> Result<usize, Error> {
         match self.state {
-            ParserState::Init => match parse_request_line(buffer) {
+            ParserState::RequestStateParsingRequestLine => match parse_request_line(buffer) {
                 Ok((request_line, bytes_parsed)) => {
                     if bytes_parsed == 0 {
                         return Ok(0);
@@ -107,8 +112,17 @@ impl Request {
 
                     // Only returns none when bytes_parsed == 0. Covered above
                     self.request_line = request_line.unwrap();
-                    self.state = ParserState::Done;
+                    self.state = ParserState::RequestStateParsingHeaders;
 
+                    Ok(bytes_parsed)
+                }
+                Err(e) => Err(e),
+            },
+            ParserState::RequestStateParsingHeaders => match self.headers.parse(buffer) {
+                Ok((done, bytes_parsed)) => {
+                    if done {
+                        self.state = ParserState::Done;
+                    }
                     Ok(bytes_parsed)
                 }
                 Err(e) => Err(e),

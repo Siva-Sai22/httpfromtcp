@@ -1,7 +1,7 @@
 use tokio::net::TcpListener;
 
-mod request;
 mod headers;
+mod request;
 
 use crate::request::request_from_reader;
 
@@ -24,6 +24,11 @@ async fn main() {
                             println!("- Method: {:?}", parsed_request.request_line.method);
                             println!("- Target: {}", parsed_request.request_line.request_target);
                             println!("- Version: {}", parsed_request.request_line.http_version);
+
+                            println!("Headers:");
+                            for (key, value) in parsed_request.headers.0.iter() {
+                                println!("- {}: {}", key, value);
+                            }
                         }
                         Err(e) => eprintln!("Failed to parse request: {}", e),
                     }

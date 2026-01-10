@@ -86,3 +86,32 @@ fn capital_header_names() {
     assert_eq!(n, 46);
     assert!(done);
 }
+
+#[test]
+fn multiple_values_for_single_header() {
+    let mut headers = Headers::new();
+    let data = b"Cookie: value1\r\nCookie: value2\r\n\r\n";
+
+    let result = headers.parse(data);
+    let (done, n) = result.unwrap();
+
+    assert!(!headers.0.is_empty());
+    assert_eq!(headers.0.get("cookie"), Some(&"value1, value2".to_string()));
+    assert_eq!(n, 32);
+    assert!(done);
+}
+
+#[test]
+fn missing_ending_crlf() {
+    let mut headers = Headers::new();
+    let data = b"Host: localhost:42069\r\nUser-Agent: TestAgent\r\n";
+
+    let result = headers.parse(data);
+    let (done, n) = result.unwrap();
+
+    assert!(!headers.0.is_empty());
+    assert_eq!(headers.0.get("host"), Some(&"localhost:42069".to_string()));
+    assert_eq!(headers.0.get("user-agent"), Some(&"TestAgent".to_string()));
+    assert_eq!(n, 46);
+    assert!(!done);
+}

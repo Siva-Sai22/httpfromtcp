@@ -123,3 +123,64 @@ async fn test_invalid_http_version_request_line() {
 
     assert!(result.is_err());
 }
+
+#[tokio::test]
+async fn test_valid_request_with_headers() {
+    let req_bytes = b"GET / HTTP/1.1\r\nHost: localhost:42069\r\nUser-Agent: curl/7.81.0\r\nAccept: */*\r\n\r\n";
+    let reader = ChunkReader {
+        data: req_bytes.to_vec(),
+        num_bytes_per_read: 4,
+        pos: 0,
+    };
+
+    let result = request_from_reader(reader)
+        .await
+        .expect("Failed to parse request");
+
+    assert_eq!(RequestMethod::Get, result.request_line.method);
+    assert_eq!("/", result.request_line.request_target);
+    assert_eq!("1.1", result.request_line.http_version);
+    assert_eq!(
+        result.headers.0.get("host"),
+        Some(&"localhost:42069".to_string())
+    );
+    assert_eq!(
+        result.headers.0.get("user-agent"),
+        Some(&"curl/7.81.0".to_string())
+    );
+    assert_eq!(result.headers.0.get("accept"), Some(&"*/*".to_string()));
+}
+
+#[tokio::test]
+async fn test_malformed_header() {
+    let req_bytes =
+        b"GET / HTTP/1.1\r\nHost localhost:42069\r\nUser-Agent: curl/7.81.0\r\nAccept: */*\r\n\r\n";
+    let reader = ChunkReader {
+        data: req_bytes.to_vec(),
+        num_bytes_per_read: 4,
+        pos: 0,
+    };
+
+    let result = request_from_reader(reader).await;
+
+    assert!(result.is_err());
+}
+
+#[tokio::test]
+async fn test_empty_headers() {
+    let req_bytes = b"GET / HTTP/1.1\r\n\r\n";
+    let reader = ChunkReader {
+        data: req_bytes.to_vec(),
+        num_bytes_per_read: 5,
+        pos: 0,
+    };
+
+    let result = request_from_reader(reader)
+        .await
+        .expect("Failed to parse request");
+
+    assert_eq!(RequestMethod::Get, result.request_line.method);
+    assert_eq!("/", result.request_line.request_target);
+    assert_eq!("1.1", result.request_line.http_version);
+    assert!(result.headers.0.is_empty());
+}
