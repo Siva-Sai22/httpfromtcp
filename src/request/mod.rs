@@ -1,4 +1,4 @@
-use std::io::Error;
+use std::{cmp::min, io::Error};
 
 use crate::headers::Headers;
 
@@ -34,12 +34,14 @@ pub struct RequestLine {
 enum ParserState {
     StateRequestLine,
     StateHeaders,
+    StateBody,
     Done,
 }
 
 pub struct Request {
     pub request_line: RequestLine,
     pub headers: Headers,
+    pub body: Vec<u8>,
     state: ParserState,
 }
 
@@ -51,6 +53,7 @@ fn new_request() -> Request {
             method: RequestMethod::Get,
         },
         headers: Headers::new(),
+        body: Vec::new(),
         state: ParserState::StateRequestLine,
     }
 }
@@ -121,12 +124,37 @@ impl Request {
             ParserState::StateHeaders => match self.headers.parse(buffer) {
                 Ok((done, bytes_parsed)) => {
                     if done {
-                        self.state = ParserState::Done;
+                        self.state = ParserState::StateBody;
                     }
                     Ok(bytes_parsed)
                 }
                 Err(e) => Err(e),
             },
+            ParserState::StateBody => {
+                let content_length = if let Some(c) = self.headers.get("content-length") {
+                    match c.parse::<usize>() {
+                        Ok(t) => t,
+                        Err(_) => {
+                            return Err(Error::new(
+                                std::io::ErrorKind::InvalidData,
+                                "Malformed Content-Length Header",
+                            ));
+                        }
+                    }
+                } else {
+                    self.state = ParserState::Done;
+                    return Ok(0);
+                };
+
+                let remaining = min(buffer.len(), content_length - self.body.len());
+                self.body.extend_from_slice(&buffer[..remaining]);
+
+                if self.body.len() == content_length {
+                    self.state = ParserState::Done;
+                }
+
+                Ok(buffer.len())
+            }
             ParserState::Done => Ok(0),
         }
     }
