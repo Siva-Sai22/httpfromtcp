@@ -35,8 +35,6 @@ pub fn get_default_headers(content_len: u16) -> Headers {
     headers.set("Connection", "close");
     headers.set("Content-Type", "text/plain");
 
-    println!("Headers set");
-
     headers
 }
 
@@ -47,8 +45,7 @@ where
     for (key, value) in headers.headers {
         stream
             .write_all(format!("{}: {}\r\n", key, value).as_bytes())
-            .await
-            .expect("Error writing a header");
+            .await?;
     }
 
     stream.write_all(b"\r\n").await?;

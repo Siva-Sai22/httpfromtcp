@@ -106,57 +106,68 @@ fn parse_request_line(request: &[u8]) -> Result<(Option<RequestLine>, usize), Er
 
 impl Request {
     fn parse(&mut self, buffer: &[u8]) -> Result<usize, Error> {
-        match self.state {
-            ParserState::StateRequestLine => match parse_request_line(buffer) {
-                Ok((request_line, bytes_parsed)) => {
-                    if bytes_parsed == 0 {
-                        return Ok(0);
-                    }
+        let mut remaining = buffer;
+        let mut total_read = 0;
 
-                    // Only returns none when bytes_parsed == 0. Covered above
-                    self.request_line = request_line.unwrap();
-                    self.state = ParserState::StateHeaders;
-
-                    Ok(bytes_parsed)
-                }
-                Err(e) => Err(e),
-            },
-            ParserState::StateHeaders => match self.headers.parse(buffer) {
-                Ok((done, bytes_parsed)) => {
-                    if done {
-                        self.state = ParserState::StateBody;
-                    }
-                    Ok(bytes_parsed)
-                }
-                Err(e) => Err(e),
-            },
-            ParserState::StateBody => {
-                let content_length = if let Some(c) = self.headers.get("content-length") {
-                    match c.parse::<usize>() {
-                        Ok(t) => t,
-                        Err(_) => {
-                            return Err(Error::new(
-                                std::io::ErrorKind::InvalidData,
-                                "Malformed Content-Length Header",
-                            ));
+        loop {
+            let bytes_parsed = match self.state {
+                ParserState::StateRequestLine => match parse_request_line(remaining) {
+                    Ok((request_line, bytes_parsed)) => {
+                        if bytes_parsed == 0 {
+                            break;
                         }
+                        self.request_line = request_line.unwrap();
+                        self.state = ParserState::StateHeaders;
+                        bytes_parsed
                     }
-                } else {
-                    self.state = ParserState::Done;
-                    return Ok(0);
-                };
+                    Err(e) => return Err(e),
+                },
+                ParserState::StateHeaders => match self.headers.parse(remaining) {
+                    Ok((done, bytes_parsed)) => {
+                        if done {
+                            self.state = ParserState::StateBody;
+                        }
+                        bytes_parsed
+                    }
+                    Err(e) => return Err(e),
+                },
+                ParserState::StateBody => {
+                    let content_length = if let Some(c) = self.headers.get("content-length") {
+                        match c.parse::<usize>() {
+                            Ok(t) => t,
+                            Err(_) => {
+                                return Err(Error::new(
+                                    std::io::ErrorKind::InvalidData,
+                                    "Malformed Content-Length Header",
+                                ));
+                            }
+                        }
+                    } else {
+                        self.state = ParserState::Done;
+                        break;
+                    };
 
-                let remaining = min(buffer.len(), content_length - self.body.len());
-                self.body.extend_from_slice(&buffer[..remaining]);
+                    let to_read = min(remaining.len(), content_length - self.body.len());
+                    self.body.extend_from_slice(&remaining[..to_read]);
 
-                if self.body.len() == content_length {
-                    self.state = ParserState::Done;
+                    if self.body.len() == content_length {
+                        self.state = ParserState::Done;
+                    }
+
+                    to_read
                 }
+                ParserState::Done => break,
+            };
 
-                Ok(buffer.len())
+            if bytes_parsed == 0 {
+                break;
             }
-            ParserState::Done => Ok(0),
+
+            total_read += bytes_parsed;
+            remaining = &remaining[bytes_parsed..];
         }
+
+        Ok(total_read)
     }
 }
 
@@ -169,38 +180,20 @@ where
     let mut buf_len = 0;
 
     while request.state != ParserState::Done {
-        loop {
-            if request.state == ParserState::Done {
-                break;
-            }
-            let read_bytes = match request.parse(&buffer[..buf_len]) {
-                Ok(n) => n,
-                Err(e) => return Err(e),
-            };
-            
-            if read_bytes == 0 {
-                break;
-            }
-            
-            buffer.copy_within(read_bytes..buf_len, 0);
-            buf_len -= read_bytes;
-        }
-        
-        if request.state == ParserState::Done {
-            break;
-        }
-
         let bytes_read = match stream.read(&mut buffer[buf_len..]).await {
-            Ok(0) => {
-                return Err(std::io::Error::new(
-                    std::io::ErrorKind::UnexpectedEof,
-                    "Connection closed before request was complete",
-                ));
-            }
             Ok(n) => n,
+            // TODO: Should resolve the errors
             Err(e) => return Err(e),
         };
         buf_len += bytes_read;
+
+        let read_bytes = match request.parse(&buffer[..buf_len]) {
+            Ok(n) => n,
+            Err(e) => return Err(e),
+        };
+
+        buffer.copy_within(read_bytes..buf_len, 0);
+        buf_len -= read_bytes;
     }
 
     Ok(request)
