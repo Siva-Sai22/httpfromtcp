@@ -30,7 +30,7 @@ pub struct RequestLine {
     pub method: RequestMethod,
 }
 
-#[derive(PartialEq)]
+#[derive(PartialEq, Debug)]
 enum ParserState {
     StateRequestLine,
     StateHeaders,
@@ -169,20 +169,38 @@ where
     let mut buf_len = 0;
 
     while request.state != ParserState::Done {
+        loop {
+            if request.state == ParserState::Done {
+                break;
+            }
+            let read_bytes = match request.parse(&buffer[..buf_len]) {
+                Ok(n) => n,
+                Err(e) => return Err(e),
+            };
+            
+            if read_bytes == 0 {
+                break;
+            }
+            
+            buffer.copy_within(read_bytes..buf_len, 0);
+            buf_len -= read_bytes;
+        }
+        
+        if request.state == ParserState::Done {
+            break;
+        }
+
         let bytes_read = match stream.read(&mut buffer[buf_len..]).await {
+            Ok(0) => {
+                return Err(std::io::Error::new(
+                    std::io::ErrorKind::UnexpectedEof,
+                    "Connection closed before request was complete",
+                ));
+            }
             Ok(n) => n,
-            // TODO: Should resolve the errors
             Err(e) => return Err(e),
         };
         buf_len += bytes_read;
-
-        let read_bytes = match request.parse(&buffer[..buf_len]) {
-            Ok(n) => n,
-            Err(e) => return Err(e),
-        };
-
-        buffer.copy_within(read_bytes..buf_len, 0);
-        buf_len -= read_bytes;
     }
 
     Ok(request)

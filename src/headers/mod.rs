@@ -48,12 +48,6 @@ impl Headers {
         self.headers.get(&key.to_lowercase())
     }
 
-    pub fn for_each(&mut self, f: fn(&String, &String)) {
-        for (key, value) in self.headers.iter() {
-            f(key, value);
-        }
-    }
-
     pub fn set(&mut self, key: &str, value: &str) {
         if let Some(existing_value) = self.get(key.to_lowercase().as_str()) {
             let new_value = format!("{}, {}", existing_value, value);
