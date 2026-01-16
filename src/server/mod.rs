@@ -10,13 +10,30 @@ use tokio::net::{TcpListener, TcpStream};
 use crate::request::{Request, request_from_reader};
 use crate::response::{self, StatusCode};
 
-pub type Handler = fn(
-    Box<dyn AsyncWrite + Send + Unpin>,
-    Request,
-) -> Pin<Box<dyn Future<Output = Option<HandlerError>> + Send>>;
+pub trait Handler: Send + Sync + 'static {
+    fn call(
+        &self,
+        writer: Box<dyn AsyncWrite + Send + Unpin>,
+        req: Request,
+    ) -> Pin<Box<dyn Future<Output = Option<HandlerError>> + Send>>;
+}
+
+impl<F, Fut> Handler for F
+where
+    F: Fn(Box<dyn AsyncWrite + Send + Unpin>, Request) -> Fut + Send + Sync + 'static,
+    Fut: Future<Output = Option<HandlerError>> + Send + 'static,
+{
+    fn call(
+        &self,
+        writer: Box<dyn AsyncWrite + Send + Unpin>,
+        req: Request,
+    ) -> Pin<Box<dyn Future<Output = Option<HandlerError>> + Send>> {
+        Box::pin((self)(writer, req))
+    }
+}
 
 pub struct Server {
-    handler: Handler,
+    handler: Arc<dyn Handler>,
     listener: TcpListener,
     closed: AtomicBool,
 }
@@ -65,7 +82,7 @@ impl Server {
         let writer_boxed: Box<dyn AsyncWrite + Send + Unpin> = Box::new(writer);
 
         // Deadlock
-        let handler_future = (self.handler)(writer_boxed, request);
+        let handler_future = (self.handler).call(writer_boxed, request);
         let read_future = reader.read_to_end(&mut buf);
 
         let (handler_result, _) = tokio::join!(handler_future, read_future);
@@ -98,12 +115,14 @@ impl Server {
 
         if let Err(e) = stream.shutdown().await {
             eprintln!("Failed to shutdown stream: {}", e);
-            return;
         }
     }
 }
 
-pub async fn serve(port: u16, handler: Handler) -> Result<Arc<Server>, Error> {
+pub async fn serve<H>(port: u16, handler: H) -> Result<Arc<Server>, Error>
+where
+    H: Handler,
+{
     let address = format!("127.0.0.1:{}", port);
     let listener = match TcpListener::bind(address).await {
         Ok(res) => res,
@@ -111,7 +130,7 @@ pub async fn serve(port: u16, handler: Handler) -> Result<Arc<Server>, Error> {
     };
 
     let server = Arc::new(Server {
-        handler,
+        handler: Arc::new(handler),
         listener,
         closed: AtomicBool::new(false),
     });
