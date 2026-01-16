@@ -41,9 +41,9 @@ async fn good_get_request_line() {
         .await
         .expect("Failed to parse request");
 
-    assert_eq!(RequestMethod::Get, result.request_line.method);
+    assert_eq!(RequestMethod::Get, result.request_line._method);
     assert_eq!("/", result.request_line.request_target);
-    assert_eq!("1.1", result.request_line.http_version);
+    assert_eq!("1.1", result.request_line._http_version);
 }
 
 #[tokio::test]
@@ -59,9 +59,9 @@ async fn good_get_request_line_with_path() {
         .await
         .expect("Failed to parse request");
 
-    assert_eq!(RequestMethod::Get, result.request_line.method);
+    assert_eq!(RequestMethod::Get, result.request_line._method);
     assert_eq!("/coffee", result.request_line.request_target);
-    assert_eq!("1.1", result.request_line.http_version);
+    assert_eq!("1.1", result.request_line._http_version);
 }
 
 #[tokio::test]
@@ -91,9 +91,9 @@ async fn post_request_line() {
         .await
         .expect("Failed to parse request");
 
-    assert_eq!(RequestMethod::Post, result.request_line.method);
+    assert_eq!(RequestMethod::Post, result.request_line._method);
     assert_eq!("/submit", result.request_line.request_target);
-    assert_eq!("1.1", result.request_line.http_version);
+    assert_eq!("1.1", result.request_line._http_version);
 }
 
 #[tokio::test]
@@ -137,9 +137,9 @@ async fn valid_request_with_headers() {
         .await
         .expect("Failed to parse request");
 
-    assert_eq!(RequestMethod::Get, result.request_line.method);
+    assert_eq!(RequestMethod::Get, result.request_line._method);
     assert_eq!("/", result.request_line.request_target);
-    assert_eq!("1.1", result.request_line.http_version);
+    assert_eq!("1.1", result.request_line._http_version);
     assert_eq!(
         result.headers.get("host"),
         Some(&"localhost:42069".to_string())
@@ -179,9 +179,9 @@ async fn empty_headers() {
         .await
         .expect("Failed to parse request");
 
-    assert_eq!(RequestMethod::Get, result.request_line.method);
+    assert_eq!(RequestMethod::Get, result.request_line._method);
     assert_eq!("/", result.request_line.request_target);
-    assert_eq!("1.1", result.request_line.http_version);
+    assert_eq!("1.1", result.request_line._http_version);
 }
 
 #[tokio::test]
@@ -197,9 +197,9 @@ async fn standard_body() {
         .await
         .expect("Failed to parse request");
 
-    assert_eq!(RequestMethod::Post, result.request_line.method);
+    assert_eq!(RequestMethod::Post, result.request_line._method);
     assert_eq!("/submit", result.request_line.request_target);
-    assert_eq!("1.1", result.request_line.http_version);
+    assert_eq!("1.1", result.request_line._http_version);
     assert_eq!(
         result.headers.get("content-length"),
         Some(&"13".to_string())
@@ -249,9 +249,9 @@ async fn empty_body_with_content_length() {
         .await
         .expect("Failed to parse request");
 
-    assert_eq!(RequestMethod::Post, result.request_line.method);
+    assert_eq!(RequestMethod::Post, result.request_line._method);
     assert_eq!("/submit", result.request_line.request_target);
-    assert_eq!("1.1", result.request_line.http_version);
+    assert_eq!("1.1", result.request_line._http_version);
     assert_eq!(result.headers.get("content-length"), Some(&"0".to_string()));
     assert_eq!(result.body, b"");
 }
@@ -269,9 +269,9 @@ async fn empty_body_without_content_length() {
         .await
         .expect("Failed to parse request");
 
-    assert_eq!(RequestMethod::Get, result.request_line.method);
+    assert_eq!(RequestMethod::Get, result.request_line._method);
     assert_eq!("/", result.request_line.request_target);
-    assert_eq!("1.1", result.request_line.http_version);
+    assert_eq!("1.1", result.request_line._http_version);
     assert_eq!(result.body, b"");
 }
 

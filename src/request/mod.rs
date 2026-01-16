@@ -25,9 +25,9 @@ impl RequestMethod {
 }
 
 pub struct RequestLine {
-    pub http_version: String,
+    pub _http_version: String,
     pub request_target: String,
-    pub method: RequestMethod,
+    pub _method: RequestMethod,
 }
 
 #[derive(PartialEq, Debug)]
@@ -48,9 +48,9 @@ pub struct Request {
 fn new_request() -> Request {
     Request {
         request_line: RequestLine {
-            http_version: String::new(),
+            _http_version: String::new(),
             request_target: String::new(),
-            method: RequestMethod::Get,
+            _method: RequestMethod::Get,
         },
         headers: Headers::new(),
         body: Vec::new(),
@@ -96,9 +96,9 @@ fn parse_request_line(request: &[u8]) -> Result<(Option<RequestLine>, usize), Er
 
     Ok((
         Some(RequestLine {
-            http_version: http_parts[1].to_string(),
+            _http_version: http_parts[1].to_string(),
             request_target: parts[1].to_string(),
-            method,
+            _method: method,
         }),
         read,
     ))
