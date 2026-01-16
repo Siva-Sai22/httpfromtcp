@@ -1,6 +1,7 @@
-use tokio::io::{AsyncWrite, AsyncWriteExt};
+use tokio::io::AsyncWriteExt;
 
 use crate::request::Request;
+use crate::server::Writer;
 
 mod headers;
 mod request;
@@ -10,7 +11,6 @@ mod server;
 #[tokio::main]
 async fn main() {
     let port = 42069;
-    type Writer = Box<dyn AsyncWrite + Send + Unpin>;
 
     let server = server::serve(port, |mut stream: Writer, request: Request| async move {
         if request.request_line.request_target == "/yourproblem" {

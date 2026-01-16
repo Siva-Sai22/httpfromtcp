@@ -32,6 +32,8 @@ where
     }
 }
 
+pub type Writer = Box<dyn AsyncWrite + Send + Unpin>;
+
 pub struct Server {
     handler: Arc<dyn Handler>,
     listener: TcpListener,
